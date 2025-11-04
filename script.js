@@ -5,6 +5,11 @@ const ctx = canvas.getContext('2d');
 // gets the 2d rendering context for canvas
 
 const visualizeBtn = document.getElementById('visualizeBtn');
+const startNodeSelect = document.getElementById('startNode');
+const endNodeSelect = document.getElementById('endNode');
+const weightsContainer = document.getElementById('weightsContainer');
+const applyWeightsBtn = document.getElementById('applyWeightsBtn');
+const resultDiv = document.getElementById('result');
 const resetBtn = document.createElement('button');
 // creating reset button
 
@@ -184,6 +189,20 @@ function finishVisualization(previous, start, end) {
     drawGraph(); // Redraw to show the final path
     resetBtn.style.display = 'inline-block';
     visualizeBtn.disabled = true;
+    if (resultDiv) {
+        let total = 0;
+        for (let i = 0; i < finalPath.length - 1; i++) {
+            const u = finalPath[i];
+            const v = finalPath[i + 1];
+            const w = (graph[u] && graph[u][v] !== undefined) ? graph[u][v] : (graph[v] && graph[v][u] !== undefined ? graph[v][u] : 0);
+            total += w;
+        }
+        if (finalPath.length > 0) {
+            resultDiv.textContent = `Path: ${finalPath.join(' -> ')} | Total distance: ${total}`;
+        } else {
+            resultDiv.textContent = 'No path found';
+        }
+    }
 }
 
 function getPath(previous, start, end) {
@@ -205,7 +224,15 @@ function visualizeAlgorithm() {
     visitedNodes.clear();
     visitedEdges.clear();
     finalPath = [];
-    dijkstra('a', 'z');
+    if (resultDiv) resultDiv.textContent = '';
+	const start = startNodeSelect && startNodeSelect.value ? startNodeSelect.value : 'a';
+	const end = endNodeSelect && endNodeSelect.value ? endNodeSelect.value : 'z';
+	if (start === end) {
+		console.warn('Start and end nodes are the same; choose different nodes.');
+		return;
+	}
+    visualizeBtn.disabled = true;
+	dijkstra(start, end);
 }
 
 function reset() {
@@ -218,6 +245,96 @@ function reset() {
 }
 
 
+function getUniqueEdges() {
+	const seen = new Set();
+	const edges = [];
+	for (const [node, neighbors] of Object.entries(graph)) {
+		for (const neighbor of Object.keys(neighbors)) {
+			const key = node < neighbor ? `${node}-${neighbor}` : `${neighbor}-${node}`;
+			if (!seen.has(key)) {
+				seen.add(key);
+				edges.push([node, neighbor]);
+			}
+		}
+	}
+	return edges;
+}
+
+function populateNodeSelects() {
+	if (!startNodeSelect || !endNodeSelect) return;
+	const nodes = Object.keys(graph);
+	startNodeSelect.innerHTML = '';
+	endNodeSelect.innerHTML = '';
+	nodes.forEach((n) => {
+		const opt1 = document.createElement('option');
+		opt1.value = n;
+		opt1.textContent = n;
+		startNodeSelect.appendChild(opt1);
+		const opt2 = document.createElement('option');
+		opt2.value = n;
+		opt2.textContent = n;
+		endNodeSelect.appendChild(opt2);
+	});
+	// Defaults
+	if (nodes.includes('a')) startNodeSelect.value = 'a';
+	if (nodes.includes('z')) endNodeSelect.value = 'z';
+}
+
+function renderWeightsPanel() {
+	if (!weightsContainer) return;
+	weightsContainer.innerHTML = '';
+	const edges = getUniqueEdges();
+	edges.forEach(([u, v]) => {
+		const row = document.createElement('div');
+		row.style.margin = '4px 0';
+		const label = document.createElement('label');
+		label.textContent = `${u} - ${v}: `;
+		label.htmlFor = `w-${u}-${v}`;
+		const input = document.createElement('input');
+		input.type = 'number';
+		input.min = '0';
+		input.step = '1';
+		input.id = `w-${u}-${v}`;
+		const weight = graph[u][v] ?? graph[v][u] ?? 0;
+		input.value = String(weight);
+		row.appendChild(label);
+		row.appendChild(input);
+		weightsContainer.appendChild(row);
+	});
+}
+
+function applyWeightsFromPanel() {
+	const edges = getUniqueEdges();
+	edges.forEach(([u, v]) => {
+		const id = `w-${u}-${v}`;
+		const input = document.getElementById(id);
+		if (!input) return;
+		const val = Number(input.value);
+		if (!Number.isFinite(val) || val < 0) return;
+		// Update both directions to keep the graph undirected and consistent
+		graph[u][v] = val;
+		graph[v][u] = val;
+	});
+	drawGraph();
+    // Auto re-run if valid selection
+    if (startNodeSelect && endNodeSelect && startNodeSelect.value && endNodeSelect.value && startNodeSelect.value !== endNodeSelect.value) {
+        visualizeAlgorithm();
+    }
+}
+
 visualizeBtn.addEventListener('click', visualizeAlgorithm);
 resetBtn.addEventListener('click', reset);
+if (applyWeightsBtn) applyWeightsBtn.addEventListener('click', applyWeightsFromPanel);
+
+if (startNodeSelect) startNodeSelect.addEventListener('change', () => {
+    if (endNodeSelect && startNodeSelect.value === endNodeSelect.value) return;
+    visualizeAlgorithm();
+});
+if (endNodeSelect) endNodeSelect.addEventListener('change', () => {
+    if (startNodeSelect && startNodeSelect.value === endNodeSelect.value) return;
+    visualizeAlgorithm();
+});
+
+populateNodeSelects();
+renderWeightsPanel();
 drawGraph();
