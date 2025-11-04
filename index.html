@@ -44,6 +44,22 @@ function Dijkstra(Graph, source):
         <canvas id="graphCanvas" width="600" height="400"></canvas>
     </section>
 
+	<section id="controls">
+		<h2>Controls</h2>
+		<div id="nodeSelection">
+			<label for="startNode">Start:</label>
+			<select id="startNode"></select>
+			<label for="endNode" style="margin-left:12px;">End:</label>
+			<select id="endNode"></select>
+		</div>
+		<div id="weightsPanel" style="margin-top:12px;">
+			<h3 style="margin:8px 0;">Edge Weights</h3>
+			<div id="weightsContainer"></div>
+			<button id="applyWeightsBtn" style="margin-top:8px;">Apply Weights</button>
+		</div>
+		<div id="result" style="margin-top:12px;font-weight:600;"></div>
+	</section>
+
     <button id="visualizeBtn">Visualize Algorithm</button>
 
     <script src="script.js"></script>
